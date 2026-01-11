@@ -1,21 +1,29 @@
 import express from "express";
-import bodyParser from "body-parser";
 
 const app = express();
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+// Exotel sends application/x-www-form-urlencoded
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
 
-// Exotel Passthru endpoint
+// ===============================
+// EXOTEL PASSTHRU ENDPOINT
+// ===============================
 app.post("/exotel", (req, res) => {
-  console.log("Incoming Exotel data:", req.body);
+  console.log("📞 Incoming Exotel Request");
+  console.log(req.body);
 
+  // Extract speech or fallback fields
   const speechText = (
     req.body.SpeechResult ||
+    req.body.speech ||
     req.body.CallSid ||
     ""
   ).toLowerCase();
 
+  console.log("🧠 Parsed Speech:", speechText);
+
+  // Urgent keywords (future use)
   const urgentKeywords = [
     "founder",
     "owner",
@@ -25,35 +33,39 @@ app.post("/exotel", (req, res) => {
     "complaint",
     "problem",
     "issue",
-    "immediately",
-    "abhi",
-    "turant"
+    "support"
   ];
 
   const isUrgent = urgentKeywords.some(word =>
     speechText.includes(word)
   );
 
-  if (isUrgent) {
-    console.log("URGENT CALL → CONNECT FOUNDER");
+  console.log("🚨 Urgent:", isUrgent);
 
-    res
-      .status(302)
-      .set("Location", "exotel://connect")
-      .end();
-  } else {
-    console.log("NORMAL CALL → END");
+  /**
+   * IMPORTANT:
+   * Exotel ALWAYS expects valid XML
+   * Even if you do nothing
+   */
+  res.set("Content-Type", "text/xml");
 
-    res.status(200).send("OK");
-  }
+  // For now → clean hangup (NO LOOP)
+  res.send(`
+    <Response>
+      <Hangup/>
+    </Response>
+  `);
 });
 
-// Health check
+// ===============================
+// HEALTH CHECK (Browser test)
+// ===============================
 app.get("/", (req, res) => {
-  res.send("Exotel Voice AI running");
+  res.send("✅ Exotel Voice AI backend running");
 });
 
+// ===============================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log("🚀 Server running on port", PORT);
 });
