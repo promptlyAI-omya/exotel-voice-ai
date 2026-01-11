@@ -14,7 +14,7 @@ app.post("/exotel", async (req, res) => {
   console.log("Caller:", userSpeech);
 
   // 👉 Botpress webhook
-  const bp = await fetch("https://YOUR_BOTPRESS_WEBHOOK", {
+  const bp = await fetch("https://webhook.botpress.cloud/4193e639-d6b9-4de1-95b0-b021b9053f05", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -29,7 +29,7 @@ app.post("/exotel", async (req, res) => {
   if (ai.urgent === true) {
     return res.json({
       action: "connect",
-      number: "+91XXXXXXXXXX"
+      number: "+917821017501"
     });
   }
 
