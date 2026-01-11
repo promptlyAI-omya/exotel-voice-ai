@@ -1,12 +1,13 @@
 {
   "name": "exotel-voice-ai",
   "version": "1.0.0",
+  "description": "Exotel Voice AI Passthru backend",
   "type": "module",
+  "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "node-fetch": "^3.3.2"
+    "express": "^4.19.2"
   }
 }
