@@ -1,43 +1,57 @@
-import express from "express";
-import fetch from "node-fetch";
+const express = require("express");
+const bodyParser = require("body-parser");
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
-app.post("/exotel", async (req, res) => {
-  const userSpeech =
-    req.body.SpeechResult ||
-    req.body.CallSid ||
-    "caller said nothing";
+// Exotel Passthru endpoint
+app.post("/exotel", (req, res) => {
+  console.log("Incoming Exotel data:", req.body);
 
-  console.log("Caller:", userSpeech);
+  const speechText =
+    (req.body.SpeechResult || req.body.CallSid || "").toLowerCase();
 
-  // 👉 Botpress webhook
-  const bp = await fetch("https://webhook.botpress.cloud/4193e639-d6b9-4de1-95b0-b021b9053f05", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      text: userSpeech
-    })
-  });
+  // 🔥 URGENT CONDITIONS
+  const urgentKeywords = [
+    "founder",
+    "owner",
+    "payment",
+    "refund",
+    "urgent",
+    "complaint",
+    "problem",
+    "issue",
+    "immediately",
+    "abhi",
+    "turant"
+  ];
 
-  const ai = await bp.json();
-  console.log("AI:", ai);
+  const isUrgent = urgentKeywords.some(word =>
+    speechText.includes(word)
+  );
 
-  // 👉 Decision
-  if (ai.urgent === true) {
-    return res.json({
-      action: "connect",
-      number: "+917821017501"
-    });
+  if (isUrgent) {
+    console.log("URGENT CALL → CONNECT FOUNDER");
+
+    // 🔥 THIS is the key
+    res
+      .status(302)
+      .set("Location", "exotel://connect")
+      .end();
+  } else {
+    console.log("NORMAL CALL → END");
+
+    res.status(200).send("OK");
   }
-
-  return res.json({
-    action: "hangup"
-  });
 });
 
-app.get("/", (_, res) => res.send("Exotel AI live"));
+// Health check (important for Railway)
+app.get("/", (req, res) => {
+  res.send("Exotel Voice AI running");
+});
 
-app.listen(process.env.PORT || 3000);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
