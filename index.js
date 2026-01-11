@@ -1,7 +1,8 @@
-const express = require("express");
-const bodyParser = require("body-parser");
+import express from "express";
+import bodyParser from "body-parser";
 
 const app = express();
+
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
@@ -9,10 +10,12 @@ app.use(bodyParser.json());
 app.post("/exotel", (req, res) => {
   console.log("Incoming Exotel data:", req.body);
 
-  const speechText =
-    (req.body.SpeechResult || req.body.CallSid || "").toLowerCase();
+  const speechText = (
+    req.body.SpeechResult ||
+    req.body.CallSid ||
+    ""
+  ).toLowerCase();
 
-  // 🔥 URGENT CONDITIONS
   const urgentKeywords = [
     "founder",
     "owner",
@@ -34,7 +37,6 @@ app.post("/exotel", (req, res) => {
   if (isUrgent) {
     console.log("URGENT CALL → CONNECT FOUNDER");
 
-    // 🔥 THIS is the key
     res
       .status(302)
       .set("Location", "exotel://connect")
@@ -46,7 +48,7 @@ app.post("/exotel", (req, res) => {
   }
 });
 
-// Health check (important for Railway)
+// Health check
 app.get("/", (req, res) => {
   res.send("Exotel Voice AI running");
 });
