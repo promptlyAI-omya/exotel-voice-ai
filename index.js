@@ -1,55 +1,68 @@
 import express from "express";
+import bodyParser from "body-parser";
 
 const app = express();
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
-// Exotel sends application/x-www-form-urlencoded
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-
-// ===============================
-// EXOTEL PASSTHRU ENDPOINT
-// ===============================
 app.post("/exotel", (req, res) => {
-  console.log("📞 Incoming Exotel Request");
-  console.log(req.body);
-
-  // Extract speech or fallback fields
-  const speechText = (
+  const rawSpeech =
     req.body.SpeechResult ||
-    req.body.speech ||
-    req.body.CallSid ||
-    ""
-  ).toLowerCase();
+    req.body.Digits ||
+    "";
 
-  console.log("🧠 Parsed Speech:", speechText);
+  const speech = rawSpeech.toLowerCase();
 
-  // Urgent keywords (future use)
+  // ❌ Ignore generic words
+  const ignoreWords = ["hello", "hi", "hey", "namaste"];
+  const cleaned = ignoreWords.reduce(
+    (t, w) => t.replace(new RegExp(w, "g"), ""),
+    speech
+  );
+
+  // 🌐 Language detection (Indian-aware)
+  const marathi = ["aahe", "kasa", "tumhi", "mala", "pahije", "kay", "bolaycha"];
+  const hindi = ["hai", "kya", "mujhe", "chahiye", "baat", "madad", "payment"];
+  const english = ["want", "need", "connect", "refund", "issue", "problem"];
+
+  let language = "unknown";
+  if (marathi.some(w => cleaned.includes(w))) language = "mr";
+  else if (hindi.some(w => cleaned.includes(w))) language = "hi";
+  else if (english.some(w => cleaned.includes(w))) language = "en";
+
+  // 🚨 Urgency detection (language independent)
   const urgentKeywords = [
     "founder",
     "owner",
     "payment",
     "refund",
-    "urgent",
     "complaint",
-    "problem",
-    "issue",
-    "support"
+    "legal",
+    "urgent",
+    "manager"
   ];
 
-  const isUrgent = urgentKeywords.some(word =>
-    speechText.includes(word)
-  );
+  const urgent = urgentKeywords.some(w => speech.includes(w));
 
-  console.log("🚨 Urgent:", isUrgent);
+  console.log("📞 Speech:", speech);
+  console.log("🌐 Lang:", language);
+  console.log("🚨 Urgent:", urgent);
 
-  /**
-   * IMPORTANT:
-   * Exotel ALWAYS expects valid XML
-   * Even if you do nothing
-   */
   res.set("Content-Type", "text/xml");
 
-  // For now → clean hangup (NO LOOP)
+  // 🔥 CONNECT FOUNDER
+  if (urgent) {
+    res.send(`
+      <Response>
+        <Connect>
+          <Number>+917821017501</Number>
+        </Connect>
+      </Response>
+    `);
+    return;
+  }
+
+  // ✅ SAFE EXIT
   res.send(`
     <Response>
       <Hangup/>
@@ -57,15 +70,7 @@ app.post("/exotel", (req, res) => {
   `);
 });
 
-// ===============================
-// HEALTH CHECK (Browser test)
-// ===============================
-app.get("/", (req, res) => {
-  res.send("✅ Exotel Voice AI backend running");
-});
-
-// ===============================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log("🚀 Server running on port", PORT);
-});
+app.listen(PORT, () =>
+  console.log("🚀 Promptly.ai AI Receptionist LIVE")
+);
