@@ -6,7 +6,7 @@ const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-const FOUNDER_MOBILE = "91XXXXXXXXXX"; // <-- apna number (country code ke sath)
+const FOUNDER_MOBILE = "917821017501"; // <-- apna number (country code ke sath)
 
 function detectLanguage(text) {
   if (/[अ-ह]/.test(text)) return "hi";
