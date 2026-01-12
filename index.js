@@ -1,76 +1,82 @@
 import express from "express";
 import bodyParser from "body-parser";
+import fetch from "node-fetch";
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-app.post("/exotel", (req, res) => {
-  const rawSpeech =
-    req.body.SpeechResult ||
-    req.body.Digits ||
-    "";
+const FOUNDER_MOBILE = "91XXXXXXXXXX"; // <-- apna number (country code ke sath)
 
-  const speech = rawSpeech.toLowerCase();
+function detectLanguage(text) {
+  if (/[अ-ह]/.test(text)) return "hi";
+  if (/[ऀ-ॿ]/.test(text)) return "mr";
+  return "en";
+}
 
-  // ❌ Ignore generic words
-  const ignoreWords = ["hello", "hi", "hey", "namaste"];
-  const cleaned = ignoreWords.reduce(
-    (t, w) => t.replace(new RegExp(w, "g"), ""),
-    speech
-  );
-
-  // 🌐 Language detection (Indian-aware)
-  const marathi = ["aahe", "kasa", "tumhi", "mala", "pahije", "kay", "bolaycha"];
-  const hindi = ["hai", "kya", "mujhe", "chahiye", "baat", "madad", "payment"];
-  const english = ["want", "need", "connect", "refund", "issue", "problem"];
-
-  let language = "unknown";
-  if (marathi.some(w => cleaned.includes(w))) language = "mr";
-  else if (hindi.some(w => cleaned.includes(w))) language = "hi";
-  else if (english.some(w => cleaned.includes(w))) language = "en";
-
-  // 🚨 Urgency detection (language independent)
-  const urgentKeywords = [
-    "founder",
-    "owner",
-    "payment",
-    "refund",
-    "complaint",
-    "legal",
-    "urgent",
-    "manager"
+function isUrgent(text) {
+  const keywords = [
+    "founder", "omkar", "payment", "refund",
+    "complaint", "urgent", "problem", "issue",
+    "connect", "call"
   ];
+  return keywords.some(k => text.includes(k));
+}
 
-  const urgent = urgentKeywords.some(w => speech.includes(w));
+app.post("/voice", async (req, res) => {
+  const userSpeech =
+    (req.body.SpeechResult || req.body.CallSid || "").toLowerCase();
 
-  console.log("📞 Speech:", speech);
-  console.log("🌐 Lang:", language);
-  console.log("🚨 Urgent:", urgent);
+  const lang = detectLanguage(userSpeech);
+  const urgent = isUrgent(userSpeech);
 
-  res.set("Content-Type", "text/xml");
+  let reply = "";
 
-  // 🔥 CONNECT FOUNDER
   if (urgent) {
-    res.send(`
-      <Response>
-        <Connect>
-          <Number>+917821017501</Number>
-        </Connect>
-      </Response>
-    `);
-    return;
+    reply =
+      lang === "hi"
+        ? "मैं समझ गई हूँ. क्या आप सच में हमारे founder से बात करना चाहते हैं? कृपया हाँ या नहीं बोलिए."
+        : lang === "mr"
+        ? "मी समजले आहे. तुम्हाला खरंच founder शी बोलायचं आहे का? कृपया हो किंवा नाही सांगा."
+        : "I understand. Do you want to speak with our founder? Please say yes or no.";
+  } else {
+    reply =
+      lang === "hi"
+        ? "Promptly.ai एक AI prompt और services platform है, जहाँ आपको high quality AI prompts और creator solutions मिलती हैं. आप और बताना चाहें तो बोलिए."
+        : lang === "mr"
+        ? "Promptly.ai हे एक AI prompt आणि services platform आहे. तुम्हाला creators साठी advanced AI solutions मिळतात. अजून माहिती हवी असल्यास सांगा."
+        : "Promptly.ai is an AI prompt and services platform helping creators and businesses get high quality AI results. Please tell me how I can help you.";
   }
 
-  // ✅ SAFE EXIT
+  res.set("Content-Type", "text/xml");
   res.send(`
-    <Response>
-      <Hangup/>
-    </Response>
-  `);
+<Response>
+  <Say voice="female">${reply}</Say>
+</Response>
+`);
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log("🚀 Promptly.ai AI Receptionist LIVE")
-);
+app.post("/confirm", (req, res) => {
+  const answer = (req.body.SpeechResult || "").toLowerCase();
+
+  if (["yes", "haan", "ha", "ho"].some(w => answer.includes(w))) {
+    res.set("Content-Type", "text/xml");
+    res.send(`
+<Response>
+  <Say voice="female">ठीक है. आपको अभी founder से connect किया जा रहा है.</Say>
+  <Dial>${FOUNDER_MOBILE}</Dial>
+</Response>
+`);
+  } else {
+    res.set("Content-Type", "text/xml");
+    res.send(`
+<Response>
+  <Say voice="female">ठीक है. मैं आपकी मदद यहीं से कर सकती हूँ. कृपया बताइए.</Say>
+</Response>
+`);
+  }
+});
+
+app.listen(process.env.PORT || 3000, () => {
+  console.log("🚀 Promptly AI Voice Server running");
+});
